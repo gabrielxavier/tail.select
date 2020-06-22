@@ -18,7 +18,7 @@
             root.tail = {};
         }
         root.tail.select = factory(root);
-
+  
         // jQuery Support
         if(typeof jQuery !== "undefined"){
             jQuery.fn.tailselect = function(o){
@@ -27,16 +27,16 @@
                 return (r.length === 1)? r[0]: (r.length === 0)? false: r;
             };
         }
-
+  
         // MooTools Support
         if(typeof MooTools !== "undefined"){
             Element.implement({ tailselect: function(o){ return new tail.select(this, o); } });
         }
     }
-}(window, function(root){
+  }(window, function(root){
     "use strict";
     var w = root, d = root.document;
-
+  
     // Internal Helper Methods
     function cHAS(el, name){
         return (el && "classList" in el)? el.classList.contains(name): false;
@@ -54,6 +54,9 @@
             var ev = d.createEvent("CustomEvent");
             ev.initCustomEvent(event, !!opt.bubbles, !!opt.cancelable, opt.detail);
         }
+  
+        $(el).trigger("$" + event); // Fix para disparar eventos jQuery
+  
         return el.dispatchEvent(ev);
     }
     function clone(obj, rep){
@@ -69,9 +72,13 @@
     function create(tag, classes){
         var r = d.createElement(tag);
             r.className = (classes && classes.join)? classes.join(" "): classes || "";
+  
+            if( tag == 'BUTTON') {
+                r.type = 'button';
+            }
         return r;
     }
-
+  
     /*
      |  SELECT CONSTRUCTOR
      |  @since  0.5.16 [0.3.0]
@@ -87,7 +94,7 @@
         if(!(el instanceof Element) || !(this instanceof select)){
             return !(el instanceof Element)? false: new select(el, config);
         }
-
+  
         // Check Element
         if(select.inst[el.getAttribute("data-tail-select")]){
             return select.inst[el.getAttribute("data-tail-select")];
@@ -98,7 +105,7 @@
                 config = clone(config, test); // This is a unofficial function ;3
             }
         }
-
+  
         // Get Element Options
         var placeholder = el.getAttribute("placeholder") || el.getAttribute("data-placeholder"),
             fb1 = "bindSourceSelect", fb2 = "sourceHide"; // Fallbacks
@@ -110,8 +117,8 @@
         config.sourceBind = (fb1 in config)? config[fb1]: config.sourceBind || false;
         config.sourceHide = (fb2 in config)? config[fb2]: config.sourceHide || true;
         config.multiLimit = (config.multiLimit >= 0)? config.multiLimit: Infinity;
-
-
+  
+  
         // Init Instance
         this.e = el;
         this.id = ++select.count;
@@ -124,7 +131,7 @@
     select.status = "beta";
     select.count = 0;
     select.inst = {};
-
+  
     /*
      |  STORAGE :: DEFAULT OPTIONS
      */
@@ -178,7 +185,7 @@
         cbLoopItem: undefined,      // [0.4.0]      Function
         cbLoopGroup: undefined      // [0.4.0]      Function
     };
-
+  
     /*
      |  STORAGE :: STRINGS
      */
@@ -318,7 +325,7 @@
             return true;
         }
     };
-
+  
     /*
      |  TAIL.SELECT HANDLER
      */
@@ -331,7 +338,7 @@
             if(!(string in this.__)){
                 return (!def)? string: def;
             }
-
+  
             var string = this.__[string];
             if(typeof string === "function"){
                 string = string.call(this, replace);
@@ -343,7 +350,7 @@
             }
             return string;
         },
-
+  
         /*
          |  INTERNAL :: INIT SELECT FIELD
          |  @since  0.5.13 [0.3.0]
@@ -351,17 +358,18 @@
         init: function(){
             var self = this, classes = ["tail-select"], con = this.con,
                 regexp = /^[0-9.]+(?:cm|mm|in|px|pt|pc|em|ex|ch|rem|vw|vh|vmin|vmax|\%)$/i;
-
+  
             // Init ClassNames
             var c = (con.classNames === true)? this.e.className: con.classNames;
             classes.push((c && c.push)? c.join(" "): (c && c.split)? c: "no-classes");
-            if(con.hideSelected){    classes.push("hide-selected"); }
-            if(con.hideDisabled){    classes.push("hide-disabled"); }
-            if(con.multiLimit == 0){ classes.push("disabled");      }
-            if(con.multiple){        classes.push("multiple");      }
-            if(con.deselect){        classes.push("deselect");      }
-            if(con.disabled){        classes.push("disabled");      }
-
+            if(con.hideSelected){    classes.push("hide-selected");  }
+            if(con.hideDisabled){    classes.push("hide-disabled");  }
+            if(con.multiLimit == 0){ classes.push("disabled");       }
+            if(con.multiple){        classes.push("multiple");       }
+            if(con.deselect){        classes.push("deselect");       }
+            if(con.disabled){        classes.push("disabled");       }
+            if(con.multiSelectAll){  classes.push("multi-select-all"); }
+  
             // Init Variables
             this.__ = clone(select.strings.en, select.strings[con.locale] || {});
             this._init = true;
@@ -371,7 +379,7 @@
             this.dropdown = create("DIV", "select-dropdown");
             this.search = create("DIV", "dropdown-search");
             this.csvInput = create("INPUT", "select-search");
-
+  
             // Build :: Select
             if(this.e.getAttribute("tabindex") !== null){
                 this.select.setAttribute("tabindex", this.e.getAttribute("tabindex"));
@@ -383,13 +391,13 @@
             } else if(con.width && !isNaN(parseFloat(con.width, 10))){
                 this.select.style.width = con.width + "px";
             }
-
+  
             // Build :: Label
             this.label.addEventListener("click", function(event){
                 self.toggle.call(self, self.con.animate);
             });
             this.select.appendChild(this.label);
-
+  
             // Build :: Dropdown
             if(!isNaN(parseInt(con.height, 10))){
                 this.dropdown.style.maxHeight = parseInt(con.height, 10) + "px";
@@ -397,13 +405,13 @@
             if(con.search){
                 this.search.innerHTML = '<input type="text" class="search-input" />';
                 this.search.children[0].placeholder = this._e("search");
-                this.search.children[0].addEventListener("input", function(event){
+                this.search.children[0].addEventListener("keyup", function(event){
                     self.query.call(self, (this.value.length > con.searchMinLength)? this.value: undefined);
                 });
                 this.dropdown.appendChild(this.search);
             }
             this.select.appendChild(this.dropdown);
-
+  
             // Build :: CSV Input
             this.csvInput.type = "hidden";
             if(con.csvOutput){
@@ -411,7 +419,7 @@
                 this.e.removeAttribute("name");
                 this.select.appendChild(this.csvInput);
             }
-
+  
             // Prepare Container
             if(con.multiple && con.multiContainer){
                 if(d.querySelector(con.multiContainer)){
@@ -422,22 +430,22 @@
                     this.container.className += " tail-select-container";
                 }
             }
-
+  
             // Prepare Options
             this.options = new options(this.e, this);
             for(var l = this.e.options.length, i = 0; i < l; i++){
                 this.options.set(this.e.options[i], false);
             }
-            for(var key in con.items){
-                if(typeof con.items[key] === "string"){
-                    con.items[key] = {value: con.items[key]};
-                }
-                this.options.add(con.items[key].key || key, con.items[key].value,
-                    con.items[key].group, con.items[key].selected,
-                    con.items[key].disabled, con.items[key].description);
-            }
+            con.items.forEach((item) => {
+              if(typeof(item) == "string"){
+                  item = {value: item.key};
+              }
+              this.options.add(item.key, item.value,
+                  item.group, item.selected,
+                  item.disabled, item.description);
+            });
             this.query();
-
+  
             // Append and Return
             if(this.e.nextElementSibling){
                 this.e.parentElement.insertBefore(this.select, this.e.nextElementSibling);
@@ -463,14 +471,14 @@
             (con.cbComplete || function(){ }).call(this, this.select);
             return (this._init = false)? this: this;
         },
-
+  
         /*
          |  INTERNAL :: EVENT LISTENER
          |  @since  0.5.13 [0.3.0]
          */
         bind: function(){
             var self = this;
-
+  
             // Keys Listener
             d.addEventListener("keydown", function(event){
                 var key = (event.keyCode || event.which), opt, inner, e, temp, tmp;
@@ -480,12 +488,12 @@
                 }
                 event.preventDefault();
                 event.stopPropagation();
-
+  
                 // Space
                 if(key === 32){
                     return self.open(self.con.animate);
                 }
-
+  
                 // Enter || Escape
                 if(key == 13){
                     if((opt = self.dropdown.querySelector(".dropdown-option.hover:not(.disabled)"))){
@@ -495,7 +503,7 @@
                 if(key == 27 || key == 13){
                     return self.close(self.con.animate);
                 }
-
+  
                 // Top || Down
                 if((opt = self.dropdown.querySelector(".dropdown-option.hover:not(.disabled)"))){
                     cREM(opt, "hover"); e = [((key == 40)? "next": "previous") + "ElementSibling"];
@@ -532,12 +540,12 @@
                 }
                 return true;
             });
-
+  
             // Close
             d.addEventListener("click", function(ev){
                 if(!cHAS(self.select, "active") || cHAS(self.select, "idle")){ return false; }
                 if(self.con.stayOpen === true){ return false; }
-
+  
                 var targets = [self.e, self.select, self.container];
                 for(var l = targets.length, i = 0; i < l; i++){
                     if(targets[i] && (targets[i].contains(ev.target) || targets[i] == ev.target)){
@@ -547,7 +555,7 @@
                 }
                 return self.close.call(self, self.con.animate);
             });
-
+  
             // Bind Source Select
             if(!this.con.sourceBind){
                 return true;
@@ -575,7 +583,7 @@
             });
             return true;
         },
-
+  
         /*
          |  INTERNAL :: INTERNAL CALLBACK
          |  @since  0.5.14 [0.3.0]
@@ -585,7 +593,7 @@
                 rgrp = item.group.replace(/('|\\)/g, "\\$1"),
                 rsel = "[data-key='" + rkey + "'][data-group='" + rgrp + "']";
             if(state == "rebuild"){ return this.query(); }
-
+  
             // Set Element-Item States
             var element = this.dropdown.querySelector(rsel);
             if(element && ["select", "disable"].indexOf(state) >= 0){
@@ -593,12 +601,12 @@
             } else if(element && ["unselect", "enable"].indexOf(state) >= 0){
                 cREM(element, (state == "unselect"? "selected": "disabled"));
             }
-
+  
             // Handle
             this.update(item);
             return (_force === true)? true: this.trigger("change", item, state);
         },
-
+  
         /*
          |  INTERNAL :: TRIGGER EVENT HANDLER
          |  @since  0.5.2 [0.4.0]
@@ -611,7 +619,7 @@
                 trigger(this.e, "change", obj);
             }
             trigger(this.select, "tail::" + event, obj);
-
+  
             var args = [], pass;
             Array.prototype.map.call(arguments, function(item, i){
                 if(i > 0){ args.push(item); }
@@ -623,7 +631,7 @@
             });
             return true;
         },
-
+  
         /*
          |  INTERNAL :: CALCULATE DROPDOWN
          |  @since  0.5.4 [0.5.0]
@@ -631,7 +639,7 @@
         calc: function(){
             var clone = this.dropdown.cloneNode(true), height = this.con.height, search = 0,
                 inner = this.dropdown.querySelector(".dropdown-inner");
-
+  
             // Calculate Dropdown Height
             clone = this.dropdown.cloneNode(true);
             clone.style.cssText = "height:auto;min-height:auto;max-height:none;opacity:0;display:block;visibility:hidden;";
@@ -643,7 +651,7 @@
                 search = clone.querySelector(".dropdown-search").clientHeight;
             }
             this.dropdown.parentElement.removeChild(clone);
-
+  
             // Calculate Viewport
             var pos = this.select.getBoundingClientRect(),
                 bottom = w.innerHeight-(pos.top+pos.height),
@@ -661,7 +669,7 @@
             }
             return this;
         },
-
+  
         /*
          |  API :: QUERY OPTIONS
          |  @since  0.5.13 [0.5.0]
@@ -672,7 +680,7 @@
             var root = create("DIV", "dropdown-inner"),             // Contexts
                 func = (!search)? "walker": "finder",
                 args = (!search)? [con.sortItems, con.sortGroups]: [search, conf];
-
+  
             // Option Walker
             this._query = (typeof search === "string")? search: false;
             while(item = this.options[func].apply(this.options, args)){
@@ -684,7 +692,7 @@
                         root.appendChild(ul);
                     } else { break; }
                 }
-
+  
                 // Create Item
                 if((li = (con.cbLoopItem || this.cbItem).call(this, item, ul, search, root)) === null){
                     continue;
@@ -703,7 +711,7 @@
                 });
                 ul.appendChild(li);
             }
-
+  
             // Empty
             var count = root.querySelectorAll("*[data-key]").length;
             if(count == 0){
@@ -713,7 +721,7 @@
                     element.appendChild(li);
                 }).call(this, root, search);
             }
-
+  
             // Select All
             if(count > 0 && con.multiple && con.multiLimit == Infinity && con.multiSelectAll){
                 a1 = create("BUTTON", "tail-all"), a2 = create("BUTTON", "tail-none");
@@ -729,14 +737,14 @@
                     var options = self.dropdown.querySelectorAll(".dropdown-inner .dropdown-option");
                     self.options.walk.call(self.options, "unselect", options);
                 })
-
+  
                 // Add Element
                 li = create("SPAN", "dropdown-action");
                 li.appendChild(a1);
                 li.appendChild(a2);
                 root.insertBefore(li, root.children[0]);
             }
-
+  
             // Add and Return
             var data = this.dropdown.querySelector(".dropdown-inner");
             this.dropdown[(data? "replace": "append") + "Child"](root, data);
@@ -745,7 +753,7 @@
             }
             return this.updateCSV().updateLabel();
         },
-
+  
         /*
          |  API :: CALLBACK -> CREATE GROUP
          |  @since  0.5.8 [0.4.0]
@@ -773,14 +781,14 @@
             }
             return ul;
         },
-
+  
         /*
          |  API :: CALLBACK -> CREATE ITEM
          |  @since  0.5.13 [0.4.0]
          */
         cbItem: function(item, optgroup, search){
             var li = create("LI", "dropdown-option" + (item.selected? " selected": "") + (item.disabled? " disabled": ""));
-
+  
             // Inner Text
             if(search && search.length > 0 && this.con.searchMarked){
                 search = this.options.applyLinguisticRules(search);
@@ -788,14 +796,14 @@
             } else {
                 li.innerText = item.value;
             }
-
+  
             // Inner Description
             if(this.con.descriptions && item.description){
                 li.innerHTML += '<span class="option-description">' + item.description + '</span>';
             }
             return li;
         },
-
+  
         /*
          |  API :: UPDATE EVERYTHING
          |  @since  0.5.0 [0.5.0]
@@ -803,7 +811,7 @@
         update: function(item){
             return this.updateLabel().updateContainer(item).updatePin(item).updateCSV(item);
         },
-
+  
         /*
          |  API :: UPDATE LABEL
          |  @since  0.5.8 [0.5.0]
@@ -834,7 +842,7 @@
                     label = "placeholder" + (c.multiple && c.multiLimit < Infinity? "Multi": "");
                 }
             }
-
+  
             // Set HTML
             label = this._e(label, {":limit": c.multiLimit}, label);
             label = '<span class="label-inner">' + label + '</span>',
@@ -846,7 +854,7 @@
             this.label.innerHTML = label;
             return this;
         },
-
+  
         /*
          |  API :: UPDATE CONTAINER
          |  @since  0.5.0 [0.5.0]
@@ -862,7 +870,7 @@
                 }
                 return this;
             }
-
+  
             // Create Item
             if(item.selected){
                 var self = this, hndl = create("DIV", "select-handle");
@@ -879,7 +887,7 @@
             }
             return this;
         },
-
+  
         /*
          |  API :: UPDATE PIN POSITION
          |  @since  0.5.3 [0.5.0]
@@ -890,7 +898,7 @@
             if(!this.con.multiPinSelected || !inner || this._query !== false){
                 return this;
             }
-
+  
             // Create Item
             option = this.dropdown.querySelector(option);
             if(item.selected){
@@ -912,7 +920,7 @@
             }
             return this;
         },
-
+  
         /*
          |  API :: UPDATE CSV INPUT
          |  @since  0.5.0 [0.5.0]
@@ -927,7 +935,7 @@
             this.csvInput.value = selected.join(this.con.csvSeparator || ",");
             return this;
         },
-
+  
         /*
          |  PUBLIC :: OPEN DROPDOWN
          |  @since  0.5.0 [0.3.0]
@@ -937,7 +945,7 @@
                 return false;
             }
             this.calc();
-
+  
             // Final Function
             var final = function(){
                 cADD(self.select, "active");
@@ -950,7 +958,7 @@
                 }
                 this.trigger.call(this, "open");
             }, self = this, e = this.dropdown.style;
-
+  
             // Open
             if(animate !== false){
                 this.label.style.zIndex = 25;
@@ -970,7 +978,7 @@
             }
             return this;
         },
-
+  
         /*
          |  PUBLIC :: CLOSE DROPDOWN
          |  @since  0.5.0 [0.3.0]
@@ -986,7 +994,7 @@
                 this.dropdown.querySelector(".dropdown-inner").removeAttribute("style");
                 this.trigger.call(this, "close");
             }, self = this, e = this.dropdown;
-
+  
             // Close
             if(animate !== false){
                 cADD(this.select, "idle");
@@ -1003,7 +1011,7 @@
             }
             return this;
         },
-
+  
         /*
          |  PUBLIC :: TOGGLE DROPDOWN
          |  @since  0.5.0 [0.3.0]
@@ -1014,7 +1022,7 @@
             }
             return !cHAS(this.select, "idle")? this.open(animate): this;
         },
-
+  
         /*
          |  PUBLIC :: REMOVE SELECT
          |  @since  0.5.3 [0.3.0]
@@ -1045,7 +1053,7 @@
             }
             return this;
         },
-
+  
         /*
          |  PUBLIC :: RELOAD SELECT
          |  @since  0.5.0 [0.3.0]
@@ -1053,7 +1061,7 @@
         reload: function(){
             return this.remove().init();
         },
-
+  
         /*
          |  PUBLIC :: GET|SET CONFIG
          |  @since  0.5.15 [0.4.0]
@@ -1068,7 +1076,7 @@
             } else if(!(key in this.con)){
                 return false;
             }
-
+  
             // Set | Return
             if(value === void 0){
                 return this.con[key];
@@ -1091,7 +1099,7 @@
             this.con.disabled = true;
             return (update === false)? this: this.reload();
         },
-
+  
         /*
          |  PUBLIC :: CUSTOM EVENT LISTENER
          |  @since  0.5.0 [0.4.0]
@@ -1106,7 +1114,7 @@
             this.events[event].push({cb: callback, args: (args instanceof Array)? args: []});
             return this;
         },
-
+  
         /*
          |  PUBLIC :: VALUE
          |  @since  0.5.13 [0.5.13]
@@ -1123,7 +1131,7 @@
             return this.options.selected[0].value;
         }
     };
-
+  
     /*
      |  OPTIONS CONSTRUCTOR
      |  @since  0.5.12 [0.3.0]
@@ -1141,7 +1149,7 @@
         this.groups = {};
         return this;
     }
-
+  
     /*
      |  TAIL.OPTIONS HANDLER
      */
@@ -1154,7 +1162,7 @@
             return state.replace("disabled", "disable").replace("enabled", "enable")
                         .replace("selected", "select").replace("unselected", "unselect");
         },
-
+  
         /*
          |  GET AN EXISTING OPTION
          |  @since  0.5.7 [0.3.0]
@@ -1178,7 +1186,7 @@
             key = (/^[0-9]+$/.test(key))? "_" + key: key;
             return (grp in this.items)? this.items[grp][key]: false;
         },
-
+  
         /*
          |  SET AN EXISTING OPTION
          |  @since  0.5.15 [0.3.0]
@@ -1193,7 +1201,7 @@
                 return false;
             }
             var id = (/^[0-9]+$/.test(key))? "_" + key: key;
-
+  
             // Validate Selection
             var con = this.self.con;
             if(con.multiple && this.selected.length >= con.multiLimit){
@@ -1203,14 +1211,14 @@
                 opt.selected = false;
                 opt.parentElement.selectedIndex = -1;
             }
-
+  
             // Sanitize Description
             if(opt.hasAttribute("data-description")){
                 var span = create("SPAN");
                     span.innerHTML = opt.getAttribute("data-description");
                 opt.setAttribute("data-description", span.innerHTML);
             }
-
+  
             // Add Item
             this.items[grp][id] = {
                 key: key,
@@ -1228,7 +1236,7 @@
             if(opt.disabled){ this.disable(this.items[grp][id]); }
             return (rebuild)? this.self.callback(this.items[grp][key], "rebuild"): true;
         },
-
+  
         /*
          |  CREATE A NEW OPTION
          |  @since  0.5.13 [0.3.0]
@@ -1243,7 +1251,7 @@
             if(this.get(key, group)){
                 return false;
             }
-
+  
             // Check Group
             group = (typeof group === "string")? group: "#";
             if(group !== "#" && !(group in this.groups)){
@@ -1254,13 +1262,13 @@
                 this.items[group] = {};
                 this.groups[group] = optgroup;
             }
-
+  
             // Validate Selection
             if(this.self.con.multiple && this.selected.length >= this.self.con.multiLimit){
                 selected = false;
             }
             disabled = !!disabled;
-
+  
             // Create Option
             var option = d.createElement("OPTION");
             option.value = key;
@@ -1271,19 +1279,19 @@
             if(description && description.length > 0){
                 option.setAttribute("data-description", description);
             }
-
+  
             // Add Option and Return
             ((group == "#")? this.element: this.groups[group]).appendChild(option);
             return this.set(option, rebuild);
         },
-
+  
         /*
          |  MOVE AN EXISTING OPTION
          |  @since  0.5.0 [0.5.0]
          */
         move: function(item, group, new_group, rebuild){
             if(!(item = this.get(item, group))){ return false; }
-
+  
             // Create Group
             if(new_group !== "#" && !(new_group in this.groups)){
                 var optgroup = create("OPTGROUP");
@@ -1293,7 +1301,7 @@
                 this.groups[new_group] = optgroup;
                 this.groups[new_group].appendChild(item.option);
             }
-
+  
             // Move To Group
             delete this.items[item.group][item.key];
             item.group = new_group;
@@ -1301,7 +1309,7 @@
             this.items[new_group][item.key] = item;
             return (rebuild)? this.self.query(): true;
         },
-
+  
         /*
          |  REMOVE AN EXISTING OPTION
          |  @since  0.5.7 [0.3.0]
@@ -1310,13 +1318,13 @@
             if(!(item = this.get(item, group))){ return false; }
             if(item.selected){ this.unselect(item); }
             if(item.disabled){ this.enable(item); }
-
+  
             // Remove Data
             item.option.parentElement.removeChild(item.option);
             var id = (/^[0-9]+$/.test(item.key))? "_" + item.key: item.key;
             delete this.items[item.group][id];
             this.length--;
-
+  
             // Remove Optgroup
             if(Object.keys(this.items[item.group]).length === 0){
                 delete this.items[item.group];
@@ -1324,7 +1332,7 @@
             }
             return (rebuild)? this.self.query(): true;
         },
-
+  
         /*
          |  CHECK AN EXISTING OPTION
          |  @since  0.5.0 [0.3.0]
@@ -1341,7 +1349,7 @@
             }
             return false;
         },
-
+  
         /*
          |  INTERACT WITH AN OPTION
          |  @since  0.5.3 [0.3.0]
@@ -1351,7 +1359,7 @@
             if(!item || ["select", "unselect", "disable", "enable"].indexOf(state) < 0){
                 return null;
             }
-
+  
             // Disable || Enable
             if(state == "disable" || state == "enable"){
                 if(!(item.option in this.disabled) && state == "disable"){
@@ -1363,7 +1371,7 @@
                 item.option.disabled = (state == "disable");
                 return this.self.callback.call(this.self, item, state);
             }
-
+  
             // Select || Unselect
             var dis = (cHAS(this.self.select, "disabled") || item.disabled || item.option.disabled),
                 lmt = (this.self.con.multiple && this.self.con.multiLimit <= this.selected.length),
@@ -1379,14 +1387,37 @@
                         this.unselect(this.selected[i], undefined, true);
                     }
                 }
-                if(this.selected.indexOf(item.option) < 0){
+  
+                if(this.selected.map(function(opt) { return opt.value; }).indexOf(item.option.value) < 0){
                     this.selected.push(item.option);
+  
+                    Object.keys(this.items).forEach((grp, i) => {
+                        Object.keys(this.items[grp]).forEach((opt, y) => {
+                            var currentItem = this.items[grp][opt];
+                            if( item.key == currentItem.key && item.group != currentItem.group ) {
+                                currentItem.selected = true;
+                                currentItem.option.selected = true;
+                                this.self.callback.call(this.self, currentItem, 'select', true)
+                            }
+                        });
+                    });
                 }
             } else if(state == "unselect"){
                 if(dis || uns){
                     return false;
                 }
                 this.selected.splice(this.selected.indexOf(item.option), 1);
+  
+                Object.keys(this.items).forEach((grp, i) => {
+                    Object.keys(this.items[grp]).forEach((opt, y) => {
+                        var currentItem = this.items[grp][opt];
+                        if( item.key == currentItem.key && item.group != currentItem.group ) {
+                            currentItem.selected = false;
+                            currentItem.option.selected = false;
+                            this.self.callback.call(this.self, currentItem, 'unselect', true)
+                        }
+                    });
+                });
             }
             item.selected = (state == "select");
             item.option.selected = (state == "select");
@@ -1409,7 +1440,7 @@
             if(!(item = this.get(item, group))){ return false; }
             return this.handle((item.selected? "unselect": "select"), item, group, false);
         },
-
+  
         /*
          |  INVERT CURRENT <STATE>
          |  @since  0.5.15 [0.3.0]
@@ -1424,7 +1455,7 @@
             var convert = Array.prototype.filter.call(this, function(element){
                 return !(element in invert);
             }), self = this;
-
+  
             // Loop
             [].concat(invert).forEach(function(item){
                 self.handle.call(self, action, item);
@@ -1434,7 +1465,7 @@
             });
             return true;
         },
-
+  
         /*
          |  SET <STATE> ON ALL OPTIONs
          |  @since  0.5.0 [0.5.0]
@@ -1451,7 +1482,7 @@
             });
             return true;
         },
-
+  
         /*
          |  SET <STATE> FOR A BUNCH OF OPTIONs
          |  @since  0.5.4 [0.5.3]
@@ -1478,45 +1509,45 @@
             }
             return this;
         },
-
+  
         /*
          |  APPLY LINGUSTIC RULES
          |  @since  0.5.13 [0.5.13]
          */
         applyLinguisticRules: function(search, casesensitive){
             var rules = this.self.con.linguisticRules, values = [];
-            
+  
             // Prepare Rules
-            Object.keys(rules).forEach(function(key){ 
+            Object.keys(rules).forEach(function(key){
                 values.push("(" + key + "|[" + rules[key] + "])");
             });
             if(casesensitive){
-                values = values.concat(values.map(function(s){ return s.toUpperCase(); })); 
+                values = values.concat(values.map(function(s){ return s.toUpperCase(); }));
             }
-
+  
             return search.replace(new RegExp(values.join("|"), (casesensitive)? "g": "ig"), function(m){
                 return values[[].indexOf.call(arguments, m, 1) - 1];
             });
         },
-    
-
+  
+  
         /*
          |  FIND SOME OPTIONs - ARRAY EDITION
          |  @since  0.5.15 [0.3.0]
          */
         find: function(search, config){
             var self = this, matches, has = {};
-            
+  
             // Get Config
             if(!config){
                 config = this.self.con.searchConfig;
             }
-
+  
             // Config Callback
             if(typeof config === "function"){
                 matches = config.bind(this, search);
             }
-
+  
             // Config Handler
             else {
                 config = (config instanceof Array)? config: [config];
@@ -1524,7 +1555,7 @@
                     if(typeof c === "string"){ has[c] = true; }
                 });
                 has.any = (!has.any)? has.attributes && has.value: has.any;
-                
+  
                 // Cleanup & Prepare
                 if(!has.regex || has.text){
                     search = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1535,11 +1566,11 @@
                 if(has.word){
                     search = '\\b' + search + '\\b';
                 }
-
+  
                 // Search
                 var regex = new RegExp(search, (!has.case)? "mi": "m"),
                     sfunc = function(opt){ return regex.test(opt.text || opt.value); };
-                
+  
                 // Handle
                 if(has.any){
                     matches = function(opt){ return sfunc(opt) || [].some.call(opt.attributes, sfunc); };
@@ -1548,19 +1579,19 @@
                 } else {
                     matches = sfunc;
                 }
-
+  
                 if(!this.self.con.searchDisabled){
                     var temp = matches;
                     matches = function(opt){ return !opt.disabled && temp(opt); };
                 }
             }
-
+  
             // Hammer Time
             return [].filter.call(this.self.e.options, matches).map(function(opt){
-                return opt.hidden? false: self.get(opt) 
+                return opt.hidden? false: self.get(opt)
             });
         },
-
+  
         /*
          |  FIND SOME OPTIONs - WALKER EDITION
          |  @since  0.5.5 [0.3.0]
@@ -1576,7 +1607,7 @@
             delete this._finderLoop;
             return false;
         },
-
+  
         /*
          |  NEW OPTIONS WALKER
          |  @since  0.5.15 [0.4.0]
@@ -1589,7 +1620,7 @@
                     } while(temp.hidden === true);
                     return temp;
                 }
-
+  
                 // Sort Items
                 if(this._inGroups.length > 0){
                     while(this._inGroups.length > 0){
@@ -1597,7 +1628,7 @@
                         if(!(group in this.items)){
                             return false;
                         }
-
+  
                         var keys = Object.keys(this.items[group]);
                         if(keys.length > 0){
                             break;
@@ -1614,7 +1645,7 @@
                     this._inGroup = group;
                     return this.walker(null, null);
                 }
-
+  
                 // Delete and Exit
                 delete this._inLoop;
                 delete this._inItems;
@@ -1622,7 +1653,7 @@
                 delete this._inGroups;
                 return false;
             }
-
+  
             // Sort Groups
             var groups = Object.keys(this.groups) || [];
             if(orderg == "ASC"){
@@ -1633,7 +1664,7 @@
                 groups = orderg.call(this, groups);
             }
             groups.unshift("#");
-
+  
             // Init Loop
             this._inLoop = true;
             this._inItems = [];
@@ -1641,7 +1672,8 @@
             return this.walker(orderi, null);
         }
     };
-
+  
     // Return
     return select;
-}));
+  }));
+  
