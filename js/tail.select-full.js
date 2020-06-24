@@ -54,8 +54,9 @@
             var ev = d.createEvent("CustomEvent");
             ev.initCustomEvent(event, !!opt.bubbles, !!opt.cancelable, opt.detail);
         }
-  
-        $(el).trigger("$" + event); // Fix para disparar eventos jQuery
+        if( typeof jQuery !== "undefined" ) {
+            $(el).trigger("$" + event); // Fix para disparar eventos jQuery
+        }
   
         return el.dispatchEvent(ev);
     }
