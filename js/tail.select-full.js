@@ -435,7 +435,13 @@
             // Prepare Options
             this.options = new options(this.e, this);
             for(var l = this.e.options.length, i = 0; i < l; i++){
-                this.options.set(this.e.options[i], false);
+                const conItemExists = con.items.find(item => {
+                    return typeof(item) == "string" ? item == this.e.options[i].value : item.key == this.e.options[i].value 
+                });
+    
+                if(!conItemExists) {
+                    this.options.set(this.e.options[i], false);
+                }
             }
             con.items.forEach((item) => {
               if(typeof(item) == "string"){
